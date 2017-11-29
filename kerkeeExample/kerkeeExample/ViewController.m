@@ -46,26 +46,20 @@
     [self.view addSubview:m_webView];
     //you can implement webview delegate
     m_jsBridge = [[KCJSBridge alloc] initWithWebView:m_webView delegate:self];
-    
-    
-//    //test uri
-//    KCURIComponents *components = [KCURIComponents componentsWithURL:[NSURL URLWithString:@"scheme://user:password@host:0/path?query=1&q=2#fragment"]
-//                                             resolvingAgainstBaseURL:NO];
 
-    
+    //add custom UserAgent, you can set your UserAgent
+    m_webView.customUserAgent = @"kerkee/1.0.0";
 
 //    NSString* pathTestHtml = [[NSBundle mainBundle] pathForResource:@"test.html" ofType:Nil];
+//    pathTestHtml = [NSString stringWithFormat:@"file://%@", pathTestHtml];
 //    NSURL* url =[NSURL URLWithString:pathTestHtml];
-    
     NSURL* url =[NSURL URLWithString:KCWebPath_ModulesTest_File];
-    
     NSMutableURLRequest *request =[NSMutableURLRequest requestWithURL:url];
     [m_webView loadRequest:request];
     
-    [self testFetchManifest];
-    
+//    [self testFetchManifest];
     //test action
-    [self testAction];
+//    [self testAction];
 }
 
 
@@ -126,6 +120,12 @@
     
 //    [aWebView addConstraint:heightConstraint];
     NSLog(@"webview frame %@", NSStringFromCGRect(aWebView.frame));
+    
+    
+    [m_webView evaluateJavaScript:@"navigator.userAgent" completionHandler:^(id result, NSError *error) {
+        NSLog(@"%@", result);
+    }];
+
 }
 
 - (void)webView:(KCWebView *)webView didFailLoadWithError:(NSError *)error
@@ -134,6 +134,7 @@
 
 - (BOOL)webView:(KCWebView *)aWebView shouldStartLoadWithRequest:(NSURLRequest *)request navigationType:(UIWebViewNavigationType)navigationType
 {
+    NSLog(@"%@", request.URL.absoluteString);
     return YES;
 }
 

@@ -23,13 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
 
 + (void)callJSFunctionOnMainThread:(NSString *)aFunction withJSONString:(NSString *)aJsonString inWebView:(KCWebView*)aWebView completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))aCompletionHandler;
 
-
 + (void)callJSFunction:(NSString *)aFunction withArg:(NSString *)aArg inWebView:(KCWebView*)aWebView completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))aCompletionHandler;
 
 + (void)callJSFunction:(NSString *)aFunction withJSONString:(NSString *)aJsonString inWebView:(KCWebView*)aWebView completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))aCompletionHandler;
 
 + (void)callJSFunction:(NSString *)aFunction  inWebView:(KCWebView*)aWebView completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))aCompletionHandler;
 
++ (void)callJS:(NSString *)aJS inWebView:(KCWebView*)aWebView;
 + (void)callJS:(NSString *)aJS inWebView:(KCWebView*)aWebView completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))aCompletionHandler;
 
 + (void)callJSOnMainThread:(NSString*)aJS inWebView:(KCWebView*)aWebView completionHandler:(void (^ _Nullable)(_Nullable id, NSError * _Nullable error))aCompletionHandler;
@@ -39,7 +39,6 @@ NS_ASSUME_NONNULL_BEGIN
 #pragma mark callbackJS
 + (void)callbackJS:(KCWebView*)aWebview callbackId:(NSString *)aCallbackId;
 + (void)callbackJSOnMainThread:(KCWebView*)aWebview callbackId:(NSString *)aCallbackId;
-
 
 + (void)callbackJS:(KCWebView*)aWebview callbackId:(NSString *)aCallbackId jsonString:(NSString *)aJsonString;
 + (void)callbackJSOnMainThread:(KCWebView*)aWebview callbackId:(NSString *)aCallbackId jsonString:(NSString *)aJsonString;

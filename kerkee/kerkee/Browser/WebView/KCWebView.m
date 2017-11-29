@@ -16,6 +16,8 @@
 #import "KCWKWebView.h"
 #import "UIAlertView+Blocks.h"
 #import "KCUtilDevice.h"
+#import "KCUtilWebView.h"
+
 
 @interface KCUIWebView ()
 @property (nonatomic, assign) id scrollViewDelegate;
@@ -25,22 +27,23 @@
 @property (nonatomic, assign) id scrollViewDelegate;
 @end
 
+@interface KCUtilWebView ()
++ (void)setWebViewUserAgent:(NSString*)aUserAgent webView:(KCWebView*)aWebView;
+@end
+
+
 @interface KCWebView () <UIWebViewDelegate, KCWebViewProgressDelegate, WKNavigationDelegate, WKUIDelegate>
 {
     BOOL m_isUsingUIWebView;
     id m_realWebView;
     BOOL m_scalesPageToFit;
-    
     BOOL m_isDocumentReady;
-    
     float m_threshold;
     BOOL m_ignoreScroll;
-    
     BOOL m_isPageScrollOn;
-    
     KCWebImageSetter* m_imageSetter;
-    
     int m_webViewID;
+    NSString* m_customUserAgent;
 }
 
 @property (nonatomic, assign) double estimatedProgress;
@@ -61,14 +64,15 @@
 
 @synthesize delegate = m_delegate;
 @synthesize progressDelegate = m_progressDelegate;
+@synthesize customUserAgent = m_customUserAgent;
 
 
 static int createWebViewID = 0;
 
 #pragma mark - init
-- (instancetype)initWithCoder:(NSCoder*)coder
+- (instancetype)initWithCoder:(NSCoder*)aCoder
 {
-    self = [super initWithCoder:coder];
+    self = [super initWithCoder:aCoder];
     if (self)
     {
         [self initWebView];
@@ -143,16 +147,17 @@ static int createWebViewID = 0;
     m_realWebView = webView;
 }
 
+
 //called after WKWebView loadRequest
-- (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context
+- (void)observeValueForKeyPath:(NSString*)aKeyPath ofObject:(id)aObject change:(NSDictionary*)aChange context:(void*)aContext
 {
-    if ([keyPath isEqualToString:@"estimatedProgress"])
+    if ([aKeyPath isEqualToString:@"estimatedProgress"])
     {
-        self.estimatedProgress = [change[NSKeyValueChangeNewKey] doubleValue];
+        self.estimatedProgress = [aChange[NSKeyValueChangeNewKey] doubleValue];
     }
-    else if ([keyPath isEqualToString:@"title"])
+    else if ([aKeyPath isEqualToString:@"title"])
     {
-        self.title = change[NSKeyValueChangeNewKey];
+        self.title = aChange[NSKeyValueChangeNewKey];
         
         if (m_progressDelegate)
         {
@@ -161,12 +166,11 @@ static int createWebViewID = 0;
                 [m_progressDelegate webView:self didReceiveTitle:self.title];
             }
         }
-        
     }
     else
     {
-        [self willChangeValueForKey:keyPath];
-        [self didChangeValueForKey:keyPath];
+        [self willChangeValueForKey:aKeyPath];
+        [self didChangeValueForKey:aKeyPath];
     }
 }
 
@@ -215,10 +219,7 @@ static int createWebViewID = 0;
     {
         return [(UIWebView*)self.realWebView valueForKeyPath:@"documentView.webView.mainFrame.javaScriptContext"];
     }
-    else
-    {
-        return nil;
-    }
+    return nil;
 }
 
 
@@ -246,11 +247,6 @@ static int createWebViewID = 0;
     BOOL resultBOOL = [self notifyWebViewShouldStartLoadWithRequest:request navigationType:navigationType];
     return resultBOOL;
 }
-//- (void)webViewProgress:(KCWebViewProgress*)webViewProgress updateProgress:(CGFloat)progress
-//{
-//    self.estimatedProgress = progress;
-//}
-
 
 #pragma mark --
 #pragma mark KCWebViewProgressDelegate
@@ -301,7 +297,15 @@ static int createWebViewID = 0;
 
 
 #pragma mark - WKNavigationDelegate
-- (void)webView:(WKWebView*)webView decidePolicyForNavigationAction:(WKNavigationAction*)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
+/*! @abstract Decides whether to allow or cancel a navigation.
+ @param webView The web view invoking the delegate method.
+ @param navigationAction Descriptive information about the action
+ triggering the navigation request.
+ @param decisionHandler The decision handler to call to allow or cancel the
+ navigation. The argument is one of the constants of the enumerated type WKNavigationActionPolicy.
+ @discussion If you do not implement this method, the web view will load the request or, if appropriate, forward it to another application.
+ */
+- (void)webView:(WKWebView *)webView decidePolicyForNavigationAction:(WKNavigationAction *)navigationAction decisionHandler:(void (^)(WKNavigationActionPolicy))decisionHandler
 {
     BOOL resultBOOL = [self notifyWebViewShouldStartLoadWithRequest:navigationAction.request navigationType:navigationAction.navigationType];
     BOOL isLoadingDisableScheme = [self isLoadingWKWebViewDisableScheme:navigationAction.request.URL];
@@ -320,19 +324,43 @@ static int createWebViewID = 0;
         decisionHandler(WKNavigationActionPolicyCancel);
     }
 }
-- (void)webView:(WKWebView*)webView didStartProvisionalNavigation:(WKNavigation*)navigation
+
+/*! @abstract Invoked when a main frame navigation starts.
+ @param webView The web view invoking the delegate method.
+ @param navigation The navigation.
+ */
+- (void)webView:(WKWebView *)webView didStartProvisionalNavigation:(null_unspecified WKNavigation *)navigation
 {
     [self notifyWebViewDidStartLoad];
 }
-- (void)webView:(WKWebView*)webView didFinishNavigation:(WKNavigation*)navigation
+
+/*! @abstract Invoked when a main frame navigation completes.
+ @param webView The web view invoking the delegate method.
+ @param navigation The navigation.
+ */
+- (void)webView:(WKWebView *)webView didFinishNavigation:(null_unspecified WKNavigation *)navigation
 {
     [self notifyWebViewDidFinishLoad];
 }
-- (void)webView:(WKWebView*)webView didFailProvisionalNavigation:(WKNavigation*)navigation withError:(NSError*)error
+
+/*! @abstract Invoked when an error occurs while starting to load data for
+ the main frame.
+ @param webView The web view invoking the delegate method.
+ @param navigation The navigation.
+ @param error The error that occurred.
+ */
+- (void)webView:(WKWebView *)webView didFailProvisionalNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error
 {
     [self notifyWebViewDidFailLoadWithError:error];
 }
-- (void)webView:(WKWebView*)webView didFailNavigation:(WKNavigation*)navigation withError:(NSError*)error
+
+/*! @abstract Invoked when an error occurs during a committed main frame
+ navigation.
+ @param webView The web view invoking the delegate method.
+ @param navigation The navigation.
+ @param error The error that occurred.
+ */
+- (void)webView:(WKWebView *)webView didFailNavigation:(null_unspecified WKNavigation *)navigation withError:(NSError *)error
 {
     [self notifyWebViewDidFailLoadWithError:error];
 }
@@ -340,7 +368,6 @@ static int createWebViewID = 0;
 
 #pragma mark - WKUIDelegate
 // TODO
-
 - (void)webView:(WKWebView *)webView runJavaScriptAlertPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(void))completionHandler
 {
     KCButton* item1 = [KCButton buttonWithLabel:@"确定"];
@@ -373,23 +400,23 @@ static int createWebViewID = 0;
         [self.delegate webViewDidStartLoad:self];
     }
 }
-- (void)notifyWebViewDidFailLoadWithError:(NSError*)error
+- (void)notifyWebViewDidFailLoadWithError:(NSError*)aError
 {
     if ([self.delegate respondsToSelector:@selector(webView:didFailLoadWithError:)])
     {
-        [self.delegate webView:self didFailLoadWithError:error];
+        [self.delegate webView:self didFailLoadWithError:aError];
     }
 }
-- (BOOL)notifyWebViewShouldStartLoadWithRequest:(NSURLRequest*)request navigationType:(NSInteger)navigationType
+- (BOOL)notifyWebViewShouldStartLoadWithRequest:(NSURLRequest*)aRequest navigationType:(NSInteger)aNavigationType
 {
     BOOL resultBOOL = YES;
     if ([self.delegate respondsToSelector:@selector(webView:shouldStartLoadWithRequest:navigationType:)])
     {
-        if (navigationType == -1)
+        if (aNavigationType == -1)
         {
-            navigationType = UIWebViewNavigationTypeOther;
+            aNavigationType = UIWebViewNavigationTypeOther;
         }
-        resultBOOL = [self.delegate webView:self shouldStartLoadWithRequest:request navigationType:navigationType];
+        resultBOOL = [self.delegate webView:self shouldStartLoadWithRequest:aRequest navigationType:aNavigationType];
     }
     return resultBOOL;
 }
@@ -397,9 +424,9 @@ static int createWebViewID = 0;
 
 #pragma mark - private
 
-- (void)setDelegate:(id<KCWebViewDelegate>)delegate
+- (void)setDelegate:(id<KCWebViewDelegate>)aDelegate
 {
-    m_delegate = delegate;
+    m_delegate = aDelegate;
     if (m_isUsingUIWebView)
     {
         UIWebView* webView = self.realWebView;
@@ -416,26 +443,23 @@ static int createWebViewID = 0;
     }
 }
 
-- (BOOL)isLoadingWKWebViewDisableScheme:(NSURL*)url
+- (BOOL)isLoadingWKWebViewDisableScheme:(NSURL*)aUrl
 {
     BOOL retValue = NO;
-    
     //WKWebview doesn't recognize the protocol type：phone numbers, email address, maps, etc.
-    if ([url.scheme isEqualToString:@"tel"] || [url.absoluteString containsString:@"ituns.apple.com"])
+    if ([aUrl.scheme isEqualToString:@"tel"] || [aUrl.absoluteString containsString:@"ituns.apple.com"])
     {
         UIApplication* app = [UIApplication sharedApplication];
-        if ([app canOpenURL:url])
+        if ([app canOpenURL:aUrl])
         {
-            [app openURL:url];
+            [app openURL:aUrl];
             retValue = YES;
         }
     }
-    
     return retValue;
 }
 
 #pragma mark --
-
 - (UIScrollView*)scrollView
 {
     return [(id)self.realWebView scrollView];
@@ -507,6 +531,13 @@ static int createWebViewID = 0;
         return [(WKWebView*)self.realWebView URL];
     }
 }
+
+- (void)setCustomUserAgent:(NSString *)aCustomUserAgent
+{
+    m_customUserAgent = aCustomUserAgent;
+    [KCUtilWebView setWebViewUserAgent:aCustomUserAgent webView:self];
+}
+
 - (BOOL)isLoading
 {   
     return [self.realWebView isLoading];
@@ -605,14 +636,12 @@ static int createWebViewID = 0;
         {
             return;
         }
-
         WKWebView* webView = m_realWebView;
-
         NSString* jScript =
         @"var head = document.getElementsByTagName('head')[0];\
         var hasViewPort = 0;\
         var metas = head.getElementsByTagName('meta');\
-        for (var i = metas.length; i>=0 ; i--) {\
+        for (var i = metas.length-1; i>=0 ; i--) {\
             var m = metas[i];\
             if (m.name == 'viewport') {\
                 hasViewPort = 1;\
@@ -645,7 +674,8 @@ static int createWebViewID = 0;
                 [userContentController addUserScript:fitWKUScript];
             }
         }
-        else {
+        else
+        {
             if (fitWKUScript)
             {
                 [array removeObject:fitWKUScript];
@@ -768,8 +798,6 @@ static int createWebViewID = 0;
     }
 }
 
-
-
 #pragma mark --
 - (void)documentReady:(BOOL)aIsReady
 {
@@ -809,15 +837,10 @@ static int createWebViewID = 0;
 
 #pragma mark -
 #pragma mark UIScrollViewDelegate
-- (void)scrollViewDidScroll:(UIScrollView *)scrollView;
+- (void)scrollViewDidScroll:(UIScrollView *)aScrollView;
 {
-//    //    NSString *scrollHeight = [self stringByEvaluatingJavaScriptFromString:@"document.body.scrollHeight;"];
-//    [super scrollViewDidScroll:scrollView];
-//    //    NSLog(@"ContentOffset  x is  %f,y is %f",scrollView.contentOffset.x,scrollView.contentOffset.y);
-    
-    
-    CGFloat scrollX = scrollView.contentOffset.x;
-    CGFloat scrollY = scrollView.contentOffset.y;
+    CGFloat scrollX = aScrollView.contentOffset.x;
+    CGFloat scrollY = aScrollView.contentOffset.y;
     CGFloat width = self.frame.size.width;
     CGFloat height = self.frame.size.height;
     
@@ -835,13 +858,11 @@ static int createWebViewID = 0;
             [KCApiBridge callbackJSOnHitPageBottom:self y:scrollY];
             m_ignoreScroll = true;
         }
-        
     }
     else
     {
         m_ignoreScroll = false;
     }
-    
 }
 
 #pragma mark -
